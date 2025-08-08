@@ -2,25 +2,42 @@ import streamlit as st
 import numpy as np
 from WaLSAtools import WaLSAtools
 import json
-import tempfile
 
-st.title("WaLSAtools API")
+st.set_page_config(page_title="WaLSAtools Web App", layout="centered")
+st.title("📊 WaLSAtools Analysis")
+st.markdown("Upload your **signal** and **time** arrays (in `.npy` format) and choose your analysis method.")
 
-uploaded_file = st.file_uploader("Upload a .npy file", type=["npy"])
-cadence = st.number_input("Cadence (s)", value=0.01)
-method = st.selectbox("Method", ["fft", "lomb_scargle"])
-as_api = st.checkbox("Return as raw JSON (for external fetch)?", value=True)
+# File upload
+signal_file = st.file_uploader("Upload signal array (.npy)", type=["npy"])
+time_file = st.file_uploader("Upload time array (.npy)", type=["npy"])
 
-if uploaded_file and st.button("Run"):
-    signal = np.load(uploaded_file)
-    power, freqs, sig, _ = WaLSAtools(signal=signal, time=time, method='fft')
+# Method selector
+method = st.selectbox("Analysis method", ["fft", "lomb_scargle"])
 
-    if as_api:
-        # Return result as JSON
-        st.json({
-            "frequencies": freqs.tolist(),
-            "power": power.tolist(),
-            "significance": sig.tolist()
-        })
-    else:
-        st.line_chart(power)
+# Output format
+as_api = st.checkbox("Return result as raw JSON (for external integration)?", value=True)
+
+# Run analysis
+if signal_file and time_file and st.button("Run Analysis"):
+    try:
+        # Load arrays
+        signal = np.load(signal_file)
+        time = np.load(time_file)
+
+        # Run WaLSAtools
+        st.info("Running WaLSAtools...")
+        power, freqs, sig = WaLSAtools(signal=signal, time=time, method=method)
+
+        if as_api:
+            st.success("Done! Returning JSON result.")
+            st.json({
+                "frequencies": freqs.tolist(),
+                "power": power.tolist(),
+                "significance": sig.tolist()
+            })
+        else:
+            st.success("Done! Showing plot of power spectrum.")
+            st.line_chart(power)
+
+    except Exception as e:
+        st.error(f"Error during analysis: {e}")
